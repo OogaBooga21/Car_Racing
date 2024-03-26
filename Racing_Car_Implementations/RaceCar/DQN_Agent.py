@@ -3,6 +3,7 @@ from torch import nn
 import numpy as np
 import random
 import time
+import torchvision.transforms as T
 import cv2
 from collections import deque
 from DQN_Replay_Mem import Replay_Memory
@@ -24,15 +25,17 @@ class RL_Agent:
         #memory images
         
         output_layer_size = int(env.action_space.n)
-        # self.online_network = Network(stack_frames, img_height, img_width, output_layer_size)
-        # self.target_network = Network(stack_frames, img_height, img_width, output_layer_size) 
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.online_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size)
         self.target_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size) 
         self.target_update_freq = target_update_freq
         self.update_target_network()
         self.target_network.eval() # make a copy and use it only for eval  
+        self.online_network.to(self.device)
+        self.target_network.to(self.device)
+        print("Running on ", self.device, ": ")
+        print(self.online_network) 
         #for the neural networks
-        
         
         self.mem_cap = memory_size
         self.replay_memory = Replay_Memory(memory_size, stack_frames, self.img_s_h, self.img_s_w)
@@ -72,7 +75,7 @@ class RL_Agent:
     def preprocess_state(self,state):
         gray_image = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY) / 255.0
         resized_img = cv2.resize(gray_image, (self.img_s_h, self.img_s_w), interpolation=cv2.INTER_AREA)
-        return resized_img#.flatten()
+        return resized_img
         
     def update_epsilon(self):
         self.epsilon = max(self.epsilon - (1 - self.epsilon_end)/self.epsilon_decay, self.epsilon_end)
@@ -97,12 +100,11 @@ class RL_Agent:
             s,r,terminal, _, _ = self.env.step(action)
             reward+=r
             s = self.preprocess_state(s)
+            self.frame_stack.append(s)       
             
             if terminal:
                 break
             
-            # s = self.preprocess_state(s)
-        self.frame_stack.append(s)       
         return reward, terminal
 
     def fill_memory(self):
@@ -134,7 +136,7 @@ class RL_Agent:
             return self.env.action_space.sample() # RANDOM ACTION/S
         else:        
             with torch.no_grad():
-                state = np.stack(self.frame_stack)
+                state = torch.tensor(np.stack(self.frame_stack, axis=0), device=self.device, dtype=torch.float32)
                 action = self.online_network.forward(state)
             return torch.argmax(action).item() # INDEX OF "BEST" ACTION
 
@@ -144,21 +146,16 @@ class RL_Agent:
             return # This should literally never happen, but ok
 
         states, actions, rewards, terminals, next_states = self.replay_memory.random_memory_batch(self.batch_size) # Get a batch
-        
+
         predicted_q_values = self.online_network.forward(states)
+
         target_q_values = self.target_network.forward(next_states).detach() #It's a copy, we don't need to punish twice or old mistakes
         
         target_q_values = torch.max(target_q_values, dim=1, keepdim=True).values #Which action has higher value
 
-        rewards = torch.from_numpy(rewards).float() # Preparing data for Bellman's
-        rewards = rewards.unsqueeze(1)
-        
-
-        terminals = torch.from_numpy(terminals).float()  # Same thing yurr, but with conversion cuz
-        terminals = terminals.unsqueeze(1)
-        
-        actions = torch.from_numpy(actions) # Y'alredy no wasgoinon
-        actions = actions.unsqueeze(1)
+        rewards = rewards.unsqueeze(1) # Preparing data for Bellman's
+        terminals = terminals.unsqueeze(1)  # Same thing yurr, but with conversion cuz
+        actions = actions.unsqueeze(1) # Y'alredy no wasgoinon
         
         target_q_values = (rewards + self.gamma * target_q_values) * (1 - terminals)
         predicted_q_values = predicted_q_values.gather(1, actions)
@@ -237,5 +234,3 @@ class RL_Agent:
 
             print('ep:{}, ep score: {}'.format(episode_count,episode_reward))
         self.env.close()
-
-# implement stop

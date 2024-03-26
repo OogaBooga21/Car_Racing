@@ -3,31 +3,31 @@ import gym
 import numpy as np
 
 gamma = 0.90
-batch_size = 64 #
-memory_size = 392                      
+batch_size = 256
+memory_size = 4096                     
 epsilon = 1.0
 epsilon_end = 0.02
-epsilon_decay = 20 #700 ? 
+epsilon_decay = 20 # 10% - 20% of training episodes
 target_update_freq = 32
 stopping_steps = np.inf # if 0 we dont take it into account
 stopping_reward = -30 #if -inf we dont take this into account
 stopping_time = 60 #if 0 we dont take this into account (seconds)
-initial_skip_frames  = 55
+initial_skip_frames  = 50
 skip_frames = 4
 stack_frames = 4
-rescale_factor = 0.85
+rescale_factor = 0.90
 
 env = gym.make('CarRacing-v2' ,continuous=False)
 
 #========================================================TRAIN======================================================================
 
-# agent = RL_Agent(env, memory_size,
-#                  epsilon,epsilon_end,epsilon_decay,
-#                  batch_size,gamma,target_update_freq, rescale_factor,
-#                  stopping_reward,stopping_time, stopping_steps,
-#                  initial_skip_frames,skip_frames,stack_frames)
+agent = RL_Agent(env, memory_size,
+                 epsilon,epsilon_end,epsilon_decay,
+                 batch_size,gamma,target_update_freq, rescale_factor,
+                 stopping_reward,stopping_time, stopping_steps,
+                 initial_skip_frames,skip_frames,stack_frames)
 
-# agent.train(200)
+agent.train(200)
 
 #========================================================TEST======================================================================
 memory_size = 70

@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from torch import nn
 from torch.nn import functional as F
 
@@ -30,27 +31,17 @@ class Network(nn.Module):
             nn.Linear(256, 128),
             nn.ReLU(),
             nn.Linear(128, self.output_layer_size)
-        )
+        )      
         
-        device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.to(device)
-        print("Running on ", device, ": ")
-        print(self) 
-        
+        self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     def forward(self, state):
-        # print("called")
-        tensor_states = torch.tensor(state,dtype=torch.float32)
-        # print(tensor_states.shape)
-        extracted_features = self.convolutions(tensor_states)
-        # print(extracted_features.shape)
+        extracted_features = self.convolutions(state)
         
         if(len(extracted_features.shape) == 4):
             extracted_features = extracted_features.view(extracted_features.size(0),-1)
         else:
             extracted_features = extracted_features.view(-1)
         
-        # print(extracted_features.shape)
         action_output = self.dnn(extracted_features)
-        # print(action_output[0])
         return action_output
