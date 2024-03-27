@@ -23,7 +23,7 @@ class Network(nn.Module):
         dummy_output = self.convolutions(dummy_input)
         linear_input_size = dummy_output.view(1, -1).size(1)
         
-        self.optimizer = torch.optim.Adam(self.parameters(), lr = 0.001)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.00025,)
         
         self.dnn = nn.Sequential(
             nn.Linear(linear_input_size, 256),

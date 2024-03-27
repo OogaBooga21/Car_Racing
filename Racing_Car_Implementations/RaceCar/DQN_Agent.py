@@ -108,7 +108,6 @@ class RL_Agent:
         return reward, terminal
 
     def fill_memory(self):
-        print("Filling Replay Memory...")
         state_count = 0
         while state_count < self.mem_cap:
             self.env_reset()
@@ -127,9 +126,20 @@ class RL_Agent:
                 episode_reward+=reward
                 state_count+=1
                 
-                if episode_reward <= self.stopping_reward or state_count>self.mem_cap:
+                if episode_reward <= self.stopping_reward or state_count>=self.mem_cap:
                     terminal = True
-                print(state_count, self.mem_cap)                          
+                
+                percent = round(100 * state_count /  self.mem_cap, 2)
+                filled_length = int(50 * state_count //  self.mem_cap)
+                bar = f'[{filled_length * "#"}{"-" * (50 - filled_length)}]'
+                print(f'{"Filling Replay Memory: "} {bar} {percent:.2f}% {" Done."}', end="\r")
+                if state_count ==  self.mem_cap:
+                    print()
+
+# # Example usage
+# for i in range(100):
+#   print_progress_bar(i, 100, prefix="Progress:", suffix="Complete")
+                       
 
     def pick_action(self):
         if random.random() < self.epsilon:

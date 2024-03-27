@@ -10,12 +10,6 @@ class Replay_Memory:
         self.memory_index = 0
         self.memory_fill_index = 0
         
-        # self.memory_states = np.empty((capacity, stack_size ,img_height, img_width), dtype=np.float32)
-        # self.memory_actions = np.empty(capacity, dtype=np.int64)
-        # self.memory_rewards = np.zeros(capacity, dtype=np.float32)
-        # self.memory_terminal = np.empty(capacity, dtype=bool)
-        # self.memory_next_states = np.empty((capacity, stack_size, img_height, img_width), dtype=np.float32)
-        
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.memory_states = torch.zeros((capacity, stack_size, img_height, img_width), dtype=torch.float32, device=self.device)
         self.memory_actions = torch.zeros(capacity, dtype=torch.int64, device=self.device)
