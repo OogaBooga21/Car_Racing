@@ -11,19 +11,19 @@ class Network(nn.Module):
         self.frame_stack_size = frame_stack_size
         self.output_layer_size = output_layer_size
         self.convolutions = nn.Sequential(
-            nn.Conv2d(self.frame_stack_size, out_channels=16, kernel_size=3,stride=1,padding=1),
+            nn.Conv2d(self.frame_stack_size, out_channels=32, kernel_size=7,stride=1,padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2,stride=2),
-            nn.Conv2d(in_channels=16,out_channels=24,kernel_size=5,stride=1,padding=1),
+            nn.MaxPool2d(kernel_size=2),
+            nn.Conv2d(in_channels=32,out_channels=64,kernel_size=5,stride=1,padding=1),
             nn.ReLU(),
-            nn.MaxPool2d(kernel_size=2,stride=2)
+            nn.MaxPool2d(kernel_size=2)
         )
         
-        dummy_input = torch.zeros((1, self.frame_stack_size, img_height, img_width))  # Assuming 94x94 input size
+        dummy_input = torch.zeros((1, self.frame_stack_size, img_height, img_width))
         dummy_output = self.convolutions(dummy_input)
         linear_input_size = dummy_output.view(1, -1).size(1)
         
-        self.optimizer = torch.optim.Adam(self.parameters(), lr=0.00025,)
+        self.optimizer = torch.optim.Adam(self.parameters(), lr=1e-4,)
         
         self.dnn = nn.Sequential(
             nn.Linear(linear_input_size, 256),

@@ -3,7 +3,6 @@ from torch import nn
 import numpy as np
 import random
 import time
-import torchvision.transforms as T
 import cv2
 from collections import deque
 from DQN_Replay_Mem import Replay_Memory
@@ -135,11 +134,6 @@ class RL_Agent:
                 print(f'{"Filling Replay Memory: "} {bar} {percent:.2f}% {" Done."}', end="\r")
                 if state_count ==  self.mem_cap:
                     print()
-
-# # Example usage
-# for i in range(100):
-#   print_progress_bar(i, 100, prefix="Progress:", suffix="Complete")
-                       
 
     def pick_action(self):
         if random.random() < self.epsilon:

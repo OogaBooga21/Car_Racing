@@ -2,15 +2,15 @@ from DQN_Agent import RL_Agent
 import gym
 import numpy as np
 
-gamma = 0.99
-batch_size = 32
-memory_size = 100                 
+gamma = 0.95
+batch_size = 1024
+memory_size = 60000            
 epsilon = 1.0
 epsilon_end = 0.01
-epsilon_decay = 100 # 10% - 20% of training episodes
-target_update_freq = 2000
+epsilon_decay = 1000 # 10% - 20% of training episodes
+target_update_freq = 100
 stopping_steps = np.inf # if 0 we dont take it into account
-stopping_reward = -np.inf #if -inf we dont take this into account
+stopping_reward = -15 #if -inf we dont take this into account
 stopping_time = np.inf #if 0 we dont take this into account (seconds)
 initial_skip_frames  = 50
 skip_frames = 4
@@ -19,7 +19,7 @@ rescale_factor = 1.0
 
 env = gym.make('CarRacing-v2' ,continuous=False)
 
-#========================================================TRAIN======================================================================
+#========================================================TRAIN=====================================================================
 
 agent = RL_Agent(env, memory_size,
                  epsilon,epsilon_end,epsilon_decay,
@@ -27,7 +27,7 @@ agent = RL_Agent(env, memory_size,
                  stopping_reward,stopping_time, stopping_steps,
                  initial_skip_frames,skip_frames,stack_frames)
 
-agent.train(2500)
+agent.train(5000)
 
 #========================================================TEST======================================================================
 memory_size = 1
