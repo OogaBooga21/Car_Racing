@@ -2,7 +2,7 @@ import gym
 
 class gymEnvWrapper:
     
-    def __init__(self, env, initial_skip_frames, skip_frames, stack_frames, ...):  # Include other preprocessing parameters
+    def __init__(self, env, initial_skip_frames, skip_frames, stack_frames):  # Include other preprocessing parameters
         self.env = env
         # ... your preprocessing parameters ...
 
