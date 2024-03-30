@@ -10,20 +10,13 @@ from DQN import Network
 
 
 class RL_Agent:
-    def __init__(self, env, memory_size ,epsilon, epsilon_end, epsilon_decay, batchsize, gamma, target_update_freq,rescale_factor ,stopping_reward, stopping_time, stopping_steps, initial_skip_frames, skip_frames, stack_frames):
+    def __init__(self, env, memory_size ,epsilon, epsilon_end, epsilon_decay, batchsize, gamma, target_update_freq):
         
-        self.env = env
-        dummy_state, _ = env.reset()
-        img_height = dummy_state.shape[0]
-        img_width = dummy_state.shape[1]
-        #images
+        self.env = env 
+        stack_frames, self.img_s_h, self.img_s_w = self.env.env_state_shape()
         
-        self.resize = rescale_factor
-        self.img_s_h = int(rescale_factor * img_height)
-        self.img_s_w = int(rescale_factor * img_width)
-        #memory images
         
-        output_layer_size = int(env.action_space.n)
+        output_layer_size = self.env.action_space_size()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         self.online_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size)
         self.target_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size) 
@@ -50,15 +43,15 @@ class RL_Agent:
         #miscelanious parameters
         
         self.highscore = -np.inf
-        self.stopping_reward= stopping_reward
-        self.stopping_time = stopping_time
-        self.stopping_steps = stopping_steps
-        #stopping and scoring
+        # self.stopping_reward= stopping_reward
+        # self.stopping_time = stopping_time
+        # self.stopping_steps = stopping_steps
+        # #stopping and scoring
         
-        self.initial_skip_frames = initial_skip_frames
-        self.skip_frames = skip_frames
-        self.stack_frames = stack_frames
-        self.frame_stack = deque(maxlen=stack_frames)
+        # self.initial_skip_frames = initial_skip_frames
+        # self.skip_frames = skip_frames
+        # self.stack_frames = stack_frames
+        # self.frame_stack = deque(maxlen=stack_frames)
         #temporal stuff ?
         
         self.fill_memory()
@@ -81,52 +74,26 @@ class RL_Agent:
     
     def update_target_network(self):
         self.target_network.load_state_dict(self.online_network.state_dict()) #update network
-
-    def env_reset(self):
-        s, _ = self.env.reset()
-        
-        for _ in range (self.initial_skip_frames):
-            s,_,_,_,_ = self.env.step(0)
-        
-        s=self.preprocess_state(s)
-        
-        for _ in range(self.stack_frames):
-            self.frame_stack.append(s)
-            
-    def env_step(self, action):
-        reward = 0
-        for _ in range(self.skip_frames):
-            s,r,terminal, _, _ = self.env.step(action)
-            reward+=r
-            s = self.preprocess_state(s)
-            self.frame_stack.append(s)       
-            
-            if terminal:
-                break
-            
-        return reward, terminal
-
+    
     def fill_memory(self):
         state_count = 0
         while state_count < self.mem_cap:
-            self.env_reset()
+            state = self.env.reset()
             terminal = False
-            episode_reward = 0
             while not terminal:
-                action = self.pick_action()
-                initial_state = self.frame_stack
-                reward, terminal = self.env_step(action)
-                self.replay_memory.store_memory(initial_state,  # Pick, see consequences, store 
+                action = self.pick_action(state)
+                next_state,reward, terminal = self.env.step(action)
+                self.replay_memory.store_memory(state,  # Pick, see consequences, store 
                                                 action,
                                                 reward,
                                                 terminal,
-                                                self.frame_stack)
+                                                next_state)
                 
-                episode_reward+=reward
+                state=next_state
                 state_count+=1
                 
-                if episode_reward <= self.stopping_reward or state_count>=self.mem_cap:
-                    terminal = True
+                # if episode_reward <= self.stopping_reward or state_count>=self.mem_cap:
+                #     terminal = True
                 
                 percent = round(100 * state_count /  self.mem_cap, 2)
                 filled_length = int(50 * state_count //  self.mem_cap)
@@ -135,12 +102,12 @@ class RL_Agent:
                 if state_count ==  self.mem_cap:
                     print()
 
-    def pick_action(self):
+    def pick_action(self,state):
         if random.random() < self.epsilon:
-            return self.env.action_space.sample() # RANDOM ACTION/S
+            return self.env.random_action()
         else:        
             with torch.no_grad():
-                state = torch.tensor(np.stack(self.frame_stack, axis=0), device=self.device, dtype=torch.float32)
+                state = torch.tensor(np.stack(state, axis=0), device=self.device, dtype=torch.float32)
                 action = self.online_network.forward(state)
             return torch.argmax(action).item() # INDEX OF "BEST" ACTION
 
@@ -176,34 +143,29 @@ class RL_Agent:
 
         for episode_count in range(train_episodes): # Do it for n episodes
             
-            episode_start_time = time.time()
             step_count = 0
-            self.env_reset() #reset env, get first state, and process it (for the first pick_action)
+            
+            state = self.env.reset() #reset env, get first state, and process it (for the first pick_action)
             terminal=False
             episode_reward=0
 
             while not terminal: # While not the end of the episode
-                action = self.pick_action()
-                initial_state = self.frame_stack
-                reward, terminal = self.env_step(action)
-                self.replay_memory.store_memory(initial_state,  # Pick, see consequences, store 
+                action = self.pick_action(state)
+                next_state, reward, terminal = self.env.step(action)
+                self.replay_memory.store_memory(state,  # Pick, see consequences, store 
                                                 action,
                                                 reward,
                                                 terminal,
-                                                self.frame_stack)
-
-                self.learn() # Call the smart function
+                                                next_state)
 
                 if step_count % self.target_update_freq == 0:
                     self.update_target_network() # Update Target ?
 
+                state=next_state
                 episode_reward += reward
                 step_count += 1
-                
-                # ====================Stop Conditions========================
-                if step_count >= self.stopping_steps or episode_reward <= self.stopping_reward or (time.time() - episode_start_time)>self.stopping_time:
-                    break
-                    
+            
+            self.learn() # Call the smart function
             self.update_epsilon()
             reward_history.append(episode_reward)
 
@@ -223,18 +185,15 @@ class RL_Agent:
     def test(self, test_episodes):
         
         for episode_count in range(test_episodes):
-            self.env_reset()
+            state=self.env.reset()
             done=False
             episode_reward = 0
-            episode_start_time = time.time()
             
             while not done: #should be fixed? 
-                action = self.pick_action()
-                reward, done = self.env_step(action)
+                action = self.pick_action(state)
+                new_state, reward, done = self.env.step(action)
                 episode_reward += reward
-                
-                if episode_reward <= self.stopping_reward or (time.time() - episode_start_time)>self.stopping_time:
-                    break
+                state = new_state
 
             print('ep:{}, ep score: {}'.format(episode_count,episode_reward))
         self.env.close()
