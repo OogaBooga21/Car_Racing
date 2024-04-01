@@ -5,11 +5,11 @@ import numpy as np
 
 gamma = 0.95
 batch_size = 64
-memory_size = 10000      
+memory_size = 10000  
 epsilon = 1.0
 epsilon_end = 0.01
-epsilon_decay = 1500 # 50-30% ?
-target_update_freq = 100
+epsilon_decay = 1500 # Episodes
+target_update_freq = 100 #Steps
 
 stopping_reward = -50
 stopping_time = 20 #mostly used for test
