@@ -4,8 +4,8 @@ import gym
 import numpy as np
 
 gamma = 0.95
-batch_size = 32
-memory_size = 1000      
+batch_size = 64
+memory_size = 10000      
 epsilon = 1.0
 epsilon_end = 0.01
 epsilon_decay = 1500 # 50-30% ?
