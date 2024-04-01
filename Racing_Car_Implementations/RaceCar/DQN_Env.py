@@ -4,7 +4,9 @@ from collections import deque
 
 class gym_Env_Wrapper:
     stopping_time = 0
-    def __init__(self,env,initial_skip_frames, skip_frames, stack_frames, rescale_factor,stopping_reward,stopping_time):
+    stopping_reward = 0
+    stopping_steps = 0
+    def __init__(self,env,initial_skip_frames, skip_frames, stack_frames, rescale_factor,stopping_reward,stopping_time,stopping_steps):
         self.env=env
         self.initial_skip = initial_skip_frames
         self.skip_frames = skip_frames
@@ -14,8 +16,10 @@ class gym_Env_Wrapper:
         self.rescale_factor = rescale_factor
         self.stopping_reward = stopping_reward
         self.stopping_time = stopping_time
+        self.stopping_steps = stopping_steps
         self.episode_start_time = 0
         self.episode_reward = 0
+        self.episode_steps = 0
         
         dummy_state, _ = self.env.reset()
         img_height = dummy_state.shape[0]
@@ -26,9 +30,12 @@ class gym_Env_Wrapper:
         
     
     def preprocess_state(self,state):
+        state = state[:84, 6:90] #crop just for this env
         gray_image = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY) / 255.0
-        resized_img = cv2.resize(gray_image, (self.img_s_h, self.img_s_w), interpolation=cv2.INTER_AREA)
-        return resized_img
+        if self.rescale_factor != 1.0:
+            resized_img = cv2.resize(gray_image, (self.img_s_h, self.img_s_w), interpolation=cv2.INTER_AREA)
+            return resized_img
+        return gray_image
     
     def reset(self):
         s, _ = self.env.reset()
@@ -43,6 +50,7 @@ class gym_Env_Wrapper:
             
         self.episode_start_time = time.time()
         self.episode_reward = 0
+        self.episode_steps = 0
         
         return self.frame_stack
 
@@ -63,6 +71,11 @@ class gym_Env_Wrapper:
             if terminal:
                 break
             
+        self.episode_steps +=1
+        print(self.episode_steps)
+        if self.episode_steps > self.stopping_steps:
+                terminal = True
+                
         return self.frame_stack, reward, terminal
     
     def random_action(self):

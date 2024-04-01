@@ -196,4 +196,4 @@ class RL_Agent:
                 state = new_state
 
             print('ep:{}, ep score: {}'.format(episode_count,episode_reward))
-        self.env.close()
+        # self.env.close()

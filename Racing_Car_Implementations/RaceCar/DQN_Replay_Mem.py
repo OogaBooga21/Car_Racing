@@ -46,4 +46,3 @@ class Replay_Memory:
         random_memory_next_states = self.memory_next_states[unique_indexes] #cool trick with np arrays, give a list of numebrs
         
         return random_memory_states, random_memory_actions, random_memory_rewards, random_memory_terminal, random_memory_next_states
-        #CONVERT TO DEVICE IF NEEDED
