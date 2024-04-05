@@ -97,9 +97,7 @@ class gym_Env_Wrapper:
             stack_reward += 0.05 #Encourage it to move forward, but not enough to be always worth it
         
         self.episode_reward += stack_reward
-        # print(stack_reward ,self.episode_reward)
         
-        # self.float_values = o_w
         return self.frame_stack, stack_reward, terminal
     
     def random_action(self):

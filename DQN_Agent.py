@@ -41,23 +41,14 @@ class RL_Agent:
         
         self.gamma = gamma
         self.batch_size = batchsize
+        self.episode_count = 0
         #miscelanious parameters
         
         self.highscore = -np.inf
         self.reward_cutof = -3.0
-        self.episode_count = 0
-        # self.stopping_reward= stopping_reward
-        # self.stopping_time = stopping_time
-        # self.stopping_steps = stopping_steps
-        # #stopping and scoring
-        
-        # self.initial_skip_frames = initial_skip_frames
-        # self.skip_frames = skip_frames
-        # self.stack_frames = stack_frames
-        # self.frame_stack = deque(maxlen=stack_frames)
-        #temporal stuff ?
-        self.writer = SummaryWriter('logs/gradient_logging')
-        self.action_log = []  # A simple list to store actions
+        #score stuff
+
+        self.writer = SummaryWriter('logs/gradient_logging') #Logging
         self.fill_memory()
         
         
@@ -115,8 +106,6 @@ class RL_Agent:
             with torch.no_grad():
                 state = torch.tensor(np.stack(state, axis=0), device=self.device, dtype=torch.float32)
                 action = self.online_network.forward(state)
-                # print(action,end='\r')
-                # self.action_log.append(action)  # Store the action
             return torch.argmax(action).item() # "BEST" ACTION
 
     def learn(self):
@@ -229,4 +218,3 @@ class RL_Agent:
                 state = new_state
 
             print('ep:{}, ep score: {}'.format(episode_count,episode_reward))
-        # self.env.close()

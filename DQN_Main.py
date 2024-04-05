@@ -1,9 +1,6 @@
 from DQN_Agent import RL_Agent
 from DQN_Env import gym_Env_Wrapper as gym_Wrapper
 import gym
-import numpy as np
-from PIL import Image
-import numpy as np  # Assuming your state is a NumPy array
 
 # Example Usage:
 gamma = 0.85
