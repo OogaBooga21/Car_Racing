@@ -15,7 +15,7 @@ class gym_Env_Wrapper:
     screen = pygame.display.set_mode(window_size, pygame.RESIZABLE)
     pygame.display.set_caption("Grayscale Image")
     
-    def __init__(self,env,initial_skip_frames, skip_frames, stack_frames, rescale_factor,stopping_reward,stopping_time,stopping_steps):
+    def __init__(self,env,mini_render,initial_skip_frames, skip_frames, stack_frames, rescale_factor,stopping_reward,stopping_time,stopping_steps):
         self.env=env
         self.initial_skip = initial_skip_frames
         self.skip_frames = skip_frames
@@ -37,6 +37,8 @@ class gym_Env_Wrapper:
         self.img_s_h = int(self.rescale_factor * img_height)
         self.img_s_w = int(self.rescale_factor * img_width)
         
+        self.mini_render=mini_render
+        
     
     def preprocess_state(self,state):
         gray_image = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY) / 255.0
@@ -46,7 +48,6 @@ class gym_Env_Wrapper:
         gray_image  = np.where(gray_image > 0.6, 0.0, gray_image)
         gray_image  = np.where(gray_image < 0.35, 0.0, gray_image)
         
-        self.display_image(gray_image)
         # gray_image  = np.where(gray_image > 0.3, 1.0, gray_image) #optional, makes the tarck completely white
         return gray_image #experimental image processing
 
@@ -71,33 +72,37 @@ class gym_Env_Wrapper:
     def step(self, action):
         stack_reward = 0
         for _ in range(self.skip_frames):
-            s,r,terminal,truncated,info = self.env.step(action)
-                        
+            s,r,terminal,truncated,info = self.env.step(action)    
             stack_reward+=r
             
             s = self.preprocess_state(s)
             self.frame_stack.append(s)
                 
             # ====================Stop Conditions========================
-            if self.episode_reward < self.stopping_reward or (time.time() - self.episode_start_time)>self.stopping_time or terminal == True:
-                terminal = True
+            if terminal == True:
                 break
             
-        self.episode_steps +=1
-        if self.episode_steps > self.stopping_steps:
-                terminal = True
-    # ===========================Reward Shaping ==========================================
+        # ===========================Reward Shaping ==========================================
+        if action == 3:
+            stack_reward += 0.02 #Encourage it to move forward, but not enough to be always worth it
+            
         if stack_reward < 0:
-            stack_reward = 0.02*self.bad_step_counter*stack_reward
+            stack_reward = 0.1*self.bad_step_counter*stack_reward
             self.bad_step_counter += 1 #1 will not even be affected 2 will barelly be
         else:
             self.bad_step_counter = 0
-            
-        if action == 3:
-            stack_reward += 0.05 #Encourage it to move forward, but not enough to be always worth it
+        # ===========================Update Metrics ====================================
         
         self.episode_reward += stack_reward
+        self.episode_steps +=1
         
+        # ===========================Custom Stop =====================================
+        if stack_reward < self.stopping_reward or self.episode_steps > self.stopping_steps or (time.time() - self.episode_start_time)>self.stopping_time:
+            terminal = True
+            
+        if self.mini_render:
+            self.display_image(s)
+        # print(stack_reward,self.bad_step_counter,self.episode_reward)
         return self.frame_stack, stack_reward, terminal
     
     def random_action(self):
@@ -117,12 +122,8 @@ class gym_Env_Wrapper:
     
     def display_image(self, image_data):
         image_data = (image_data * 255).astype(np.uint8)
-        image_data = np.transpose(image_data, (1, 0))
-        image_surface = pygame.Surface(image_data.shape, depth=8)
-        pygame.surfarray.blit_array(image_surface, image_data)
-        # grayscale_palette = [(i, i, i) for i in range(256)]  
-        # image_surface.set_palette(grayscale_palette)
-        # for grayscale but its slower
+        image_surface = pygame.surfarray.make_surface(np.stack([image_data]*3, axis=-1))
+
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 pygame.quit()
@@ -132,6 +133,9 @@ class gym_Env_Wrapper:
                 self.screen = pygame.display.set_mode(self.window_size, pygame.RESIZABLE)
 
         image_surface = pygame.transform.scale(image_surface, self.window_size)
+        corrected_image_surface = pygame.transform.rotate(image_surface, -90)
+        corrected_image_surface = pygame.transform.flip(corrected_image_surface, True, False)
+
         self.screen.fill((0, 0, 0))
-        self.screen.blit(image_surface, (0, 0))
+        self.screen.blit(corrected_image_surface, (0, 0))
         pygame.display.flip()

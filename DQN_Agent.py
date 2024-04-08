@@ -3,15 +3,13 @@ from torch import nn
 import numpy as np
 import random
 import time
-import cv2
-from collections import deque
 from DQN_Replay_Mem import Replay_Memory
 from DQN import Network
 from torch.utils.tensorboard import SummaryWriter
 
 
 class RL_Agent:
-    def __init__(self, env, memory_size ,epsilon, epsilon_end, epsilon_decay, batchsize, gamma, target_update_freq):
+    def __init__(self, env,memory_size ,epsilon, epsilon_end, epsilon_decay, batchsize, gamma, target_update_freq):
         
         self.env = env 
         stack_frames, self.img_s_h, self.img_s_w = self.env.env_state_shape()
@@ -19,11 +17,19 @@ class RL_Agent:
         
         output_layer_size = self.env.action_space_size()
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        self.online_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size)
-        self.target_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size) 
-        self.target_update_freq = target_update_freq
-        self.update_target_network()
+        
+        self.online_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size).to(self.device)
+        self.online_network.train()
+        
+        self.target_network = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size).to(self.device)
+        self.target_network.load_state_dict(self.online_network.state_dict())
         self.target_network.eval() # make a copy and use it only for eval  
+        
+        self.best = Network(stack_frames, self.img_s_h, self.img_s_w, output_layer_size).to(self.device)
+        self.best.load_state_dict(self.online_network.state_dict())
+        
+        self.target_update_freq = target_update_freq
+        
         self.online_network.to(self.device)
         self.target_network.to(self.device)
         print("Running on ", self.device, ": ")
@@ -44,7 +50,7 @@ class RL_Agent:
         self.episode_count = 0
         #miscelanious parameters
         
-        self.highscore = -np.inf
+        self.highscore = -9999
         self.reward_cutof = -3.0
         #score stuff
 
@@ -55,14 +61,15 @@ class RL_Agent:
     def save_model_state(self, network, filename):
         torch.save(network.state_dict(), filename)
 
-    def load_mode_state(self, filename):
-        self.online_network.load_state_dict(torch.load(filename))
-        #remember to make it .eval when testing
-        
-    def preprocess_state(self,state):
-        gray_image = cv2.cvtColor(state, cv2.COLOR_RGB2GRAY) / 255.0
-        resized_img = cv2.resize(gray_image, (self.img_s_h, self.img_s_w), interpolation=cv2.INTER_AREA)
-        return resized_img
+    def load_model_state(self, filename,test):
+        if torch.cuda.is_available():  # Check for GPU availability
+            map_location = torch.device('cuda')  # Map to GPU if possible
+        else:
+            map_location = torch.device('cpu')  # Fallback to CPU
+
+        self.online_network.load_state_dict(torch.load(filename, map_location=map_location))
+        if test:
+            self.online_network.eval()  # Set to evaluation mode 
         
     def update_epsilon(self):
         self.epsilon = max(self.epsilon - (1 - self.epsilon_end)/self.epsilon_decay, self.epsilon_end)
@@ -105,7 +112,7 @@ class RL_Agent:
         else:        
             with torch.no_grad():
                 state = torch.tensor(np.stack(state, axis=0), device=self.device, dtype=torch.float32)
-                action = self.online_network.forward(state)
+                action = self.online_network.forward(state.unsqueeze(0)) #might get rid of some code in forward
             return torch.argmax(action).item() # "BEST" ACTION
 
     def learn(self):
@@ -130,16 +137,10 @@ class RL_Agent:
         
         self.online_network.optimizer.zero_grad()
         
-        loss = nn.functional.mse_loss(predicted_q_values, target_q_values).mean()
+        loss = nn.functional.mse_loss(predicted_q_values, target_q_values)#.mean()
         loss.backward()
         self.online_network.optimizer.step()
         self.online_network.scheduler.step()    
-        
-        
-        for name, param in self.online_network.named_parameters():
-            if param.requires_grad:
-                self.writer.add_histogram(name, param.grad, self.episode_count) 
-        self.writer.flush()   
                 
         return loss
     
@@ -147,7 +148,7 @@ class RL_Agent:
         print('Training...')      
         reward_history = []
         loss_history = []
-        best = self.online_network
+        step_history = []
 
         for episode_count in range(train_episodes): # Do it for n episodes
             self.episode_count+=1
@@ -173,36 +174,36 @@ class RL_Agent:
                 state=next_state
                 episode_reward += reward
                 step_count += 1
-            
-            if(episode_count % 5 == 0):
-                for _ in range(3):
+        
+            if(episode_count % 2 == 0):
+                for _ in range(2):
                     loss_copy = self.learn() # Call the smart function
                     loss_history.append(loss_copy.item())
-                if episode_count % 10 == 0: 
-                    with open('logs/action_log.txt', 'a') as f:
-                        for action in self.action_log:
-                            f.write(str(action) + '\n')
-                    self.action_log.clear()
                     
             self.update_epsilon()
             
             reward_history.append(episode_reward)
-
+            step_history.append(step_count)
             current_avg_score = np.mean(reward_history[-10:]) 
-            current_avg_loss = np.mean(loss_history[-10:]) 
+            current_avg_loss = np.mean(loss_history[-10:])
+            current_avg_step = np.mean(step_history[-10:])
 
             if(episode_count % 10 == 0): # Update user
-                print('ep:{}, HS: {}, BA:{}, LA:{}, E:{}'.format(episode_count, self.highscore, current_avg_score, current_avg_loss, self.epsilon))                   
-                print(time.localtime().tm_hour,time.localtime().tm_min,time.localtime().tm_sec)
-                self.save_model_state(best,"best.pt")
+                print('ep:{}, HS: {}, BA:{}, LA:{},SA:{},E:{}'.format(episode_count, int(self.highscore), int(current_avg_score), current_avg_loss, int(current_avg_step) ,self.epsilon))                   
+                print([int(reward) for reward in reward_history[-10:]], time.localtime().tm_hour,time.localtime().tm_min,time.localtime().tm_sec)
+                # Inside RL_Agent.train() method, after updating reward_history, loss_history, etc.
+                self.writer.add_scalar('Training/Average Reward', current_avg_score, episode_count)
+                self.writer.add_scalar('Training/Average Loss', current_avg_loss, episode_count)
+                self.writer.add_scalar('Training/Step Count', current_avg_step, episode_count)
+                self.writer.add_scalar('Training/Epsilon', self.epsilon, episode_count)
+                
+                self.save_model_state(self.best,"best.pt")
         
-            if episode_reward >= self.highscore: # Save ? 
+            if episode_reward >= self.highscore: # Save ?
                 self.highscore = episode_reward
-                best = self.online_network #save for later
+                self.best.load_state_dict(self.online_network.state_dict()) #save for later
             
-            print(episode_reward)
-
-        self.save_model_state(best,"best.pt") #actual save
+        self.save_model_state(self.best,"best.pt") #actual save
         
     def test(self, test_episodes):
         
