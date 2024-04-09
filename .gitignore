@@ -1,16 +1,8 @@
 __pycache__/Debug.cpython-311.pyc
 test.py
 __pycache__/DQN_Agent.cpython-311.pyc
-logs/gradient_logging/events.out.tfevents.1712275240.DESKTOP-R2SKLVT.18800.0
-logs/gradient_logging/events.out.tfevents.1712274622.DESKTOP-R2SKLVT.18076.0
-logs/gradient_logging/events.out.tfevents.1712273661.DESKTOP-R2SKLVT.10392.0
-logs/gradient_logging/events.out.tfevents.1712273593.DESKTOP-R2SKLVT.17556.0
-logs/gradient_logging/events.out.tfevents.1712273513.DESKTOP-R2SKLVT.10616.0
-logs/gradient_logging/events.out.tfevents.1712273488.DESKTOP-R2SKLVT.3872.0
-logs/gradient_logging/events.out.tfevents.1712272985.DESKTOP-R2SKLVT.17768.0
-logs/gradient_logging/events.out.tfevents.1712272692.DESKTOP-R2SKLVT.4864.0
-logs/gradient_logging/events.out.tfevents.1712272169.DESKTOP-R2SKLVT.11528.0
-logs/action_log.txt
+logs
+/logs
 __pycache__/DQN.cpython-311.pyc
 __pycache__/DQN_Replay_Mem.cpython-311.pyc
 __pycache__/DQN_Env.cpython-311.pyc
@@ -22,3 +14,4 @@ __pycache__/DQN_Env.cpython-311.pyc
 /main.py
 /test.py
 /transparent.py
+/bestcomp.pt

@@ -8,7 +8,6 @@ class Replay_Memory:
     
     def __init__(self,capacity,stack_size,img_height,img_width):
         self.capacity = capacity
-        # self.memory_index = 0
         self.memory_fill_index = 0
         self.device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         

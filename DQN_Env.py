@@ -46,7 +46,7 @@ class gym_Env_Wrapper:
             gray_image = cv2.resize(gray_image, (self.img_s_h, self.img_s_w), interpolation=cv2.INTER_AREA)
         
         gray_image  = np.where(gray_image > 0.6, 0.0, gray_image)
-        gray_image  = np.where(gray_image < 0.35, 0.0, gray_image)
+        gray_image  = np.where(gray_image < 0.37, 0.0, gray_image)
         
         # gray_image  = np.where(gray_image > 0.3, 1.0, gray_image) #optional, makes the tarck completely white
         return gray_image #experimental image processing
@@ -97,7 +97,7 @@ class gym_Env_Wrapper:
         self.episode_steps +=1
         
         # ===========================Custom Stop =====================================
-        if stack_reward < self.stopping_reward or self.episode_steps > self.stopping_steps or (time.time() - self.episode_start_time)>self.stopping_time:
+        if self.episode_reward < self.stopping_reward or self.episode_steps > self.stopping_steps or (time.time() - self.episode_start_time)>self.stopping_time:
             terminal = True
             
         if self.mini_render:
