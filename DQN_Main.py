@@ -53,7 +53,7 @@ env = gym_Wrapper(env_test,mini_render,initial_skip_frames,skip_frames,stack_fra
                  rescale_factor,stopping_reward,stopping_time,stopping_steps)
 
 agent_test = RL_Agent(env, memory_size,
-                 epsilon,epsilon_end,epsilon_decay,
+                 0,0,0,
                  batch_size,gamma,target_update_freq)
 
 agent_test.load_model_state('bestcomp.pt',test)
